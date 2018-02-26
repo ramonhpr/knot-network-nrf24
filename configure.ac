@@ -33,6 +33,12 @@ PKG_CHECK_MODULES(ELL, ell,
 AC_SUBST(ELL_CFLAGS)
 AC_SUBST(ELL_LIBS)
 
+PKG_CHECK_MODULES(KNOTPROTO, knotprotocol,
+  [AC_DEFINE([HAVE_KNOTPROTO],[1],[Use KNOTPROTO])],
+  [AC_MSG_ERROR("KNoTprotocol missing")])
+AC_SUBST(KNOTPROTO_CFLAGS)
+AC_SUBST(KNOTPROTO_LIBS)
+
 if (test "$sysconfdir" = '${prefix}/etc'); then
 	knotconfigdir="${prefix}/etc/knot"
 else
