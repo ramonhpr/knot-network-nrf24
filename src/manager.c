@@ -78,7 +78,7 @@ int manager_start(const char *file, const char *host, int port,
 	dbus_start();
 
 	/* TODO: Missing error handling */
-	return adapter_start(host, keys_pathname, channel, port, &mac);
+	return adapter_start(host, keys_pathname, channel, port, &mac, spi);
 }
 
 void manager_stop(void)

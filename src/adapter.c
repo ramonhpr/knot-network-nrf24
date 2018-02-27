@@ -486,7 +486,7 @@ static void mgmt_idle_read(struct l_idle *idle, void *user_data)
 	}
 }
 
-static int radio_init(uint8_t channel, const struct nrf24_mac *addr)
+static int radio_init(uint8_t channel, const struct nrf24_mac *addr, const char *spi)
 {
 	const struct nrf24_config config = {
 			.mac = *addr,
@@ -494,7 +494,7 @@ static int radio_init(uint8_t channel, const struct nrf24_mac *addr)
 			.name = "nrf0" };
 	int err;
 
-	err = hal_comm_init("NRF0", &config);
+	err = hal_comm_init("NRF0", spi, &config);
 	if (err < 0) {
 		hal_log_error("Cannot init NRF0 radio. (%d)", err);
 		return err;
@@ -746,7 +746,7 @@ static void proxy_removed(uint64_t id)
 
 int adapter_start(const char *host, const char *keys_pathname,
 		  uint8_t channel, int port,
-		  const struct nrf24_mac *mac)
+		  const struct nrf24_mac *mac, const char *spi)
 {
 	const char *path = "/nrf0";
 	int ret;
@@ -761,7 +761,7 @@ int adapter_start(const char *host, const char *keys_pathname,
 		tcp_port = port;
 	}
 
-	ret = radio_init(channel, mac);
+	ret = radio_init(channel, mac, spi);
 	if (ret < 0)
 		return ret;
 
