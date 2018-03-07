@@ -3,6 +3,12 @@ AM_MAKEFLAGS = --no-print-directory
 AM_CFLAGS = $(WARNING_CFLAGS) $(BUILD_CFLAGS)
 AM_LDFLAGS = $(BUILD_LDFLAGS)
 
+if STATIC
+AM_LDFLAGS += -static
+else
+AM_LDFLAGS += -ldl
+endif
+
 dbusdir = @DBUS_CONFDIR@/dbus-1/system.d
 dbus_DATA = src/nrf24.conf
 
