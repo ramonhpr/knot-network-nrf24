@@ -18,6 +18,7 @@ src_nrfd_SOURCES = src/main.c \
 		   src/adapter.h src/adapter.c \
 		   src/device.h src/device.c \
 		   src/storage.h src/storage.c \
+		   src/knot_connection.h src/knot_connection.c \
 		   src/dbus.h src/dbus.c
 
 src_nrfd_LDADD = @ELL_LIBS@ @KNOTHAL_LIBS@

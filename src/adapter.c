@@ -45,10 +45,10 @@
 #include "device.h"
 #include "adapter.h"
 #include "settings.h"
+#include "knot_connection.h"
 
 #define MAX_PEERS			5
 #define BCAST_TIMEOUT			10000
-#define KNOTD_UNIX_ADDRESS		"knot"
 
 struct nrf24_adapter {
 	struct nrf24_mac addr;
@@ -72,8 +72,6 @@ struct idle_pipe {
 static struct nrf24_adapter adapter; /* Supports only one local adapter */
 static struct l_idle *mgmt_idle;
 static struct l_timeout *mgmt_timeout;
-static struct in_addr inet_address;
-static int tcp_port;
 static int mgmtfd;
 
 static bool pipe_match_addr(const void *a, const void *b)
@@ -119,78 +117,6 @@ static void nrf24_destroy(void *a)
 {
 	l_free(a);
 }
-
-static int unix_connect(void)
-{
-	struct sockaddr_un addr;
-	int sock;
-
-	sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-	if (sock < 0)
-		return -errno;
-
-	/* Represents unix socket from nrfd to knotd */
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	strncpy(addr.sun_path + 1, KNOTD_UNIX_ADDRESS,
-					strlen(KNOTD_UNIX_ADDRESS));
-
-	if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) == -1)
-		return -errno;
-
-	return sock;
-}
-
-static int tcp_init(const char *host)
-{
-	struct hostent *hostent;		/* Host information */
-	int err;
-
-	hostent = gethostbyname(host);
-	if (hostent == NULL) {
-		err = errno;
-		hal_log_error("gethostbyname(): %s(%d)", strerror(err), err);
-		return -err;
-	}
-
-	inet_address.s_addr = *((unsigned long *) hostent-> h_addr_list[0]);
-
-	return 0;
-}
-
-static int tcp_connect(void)
-{
-	struct sockaddr_in server;
-	int err, sock, enable = 1;
-
-	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sock < 0) {
-		err = errno;
-		hal_log_error("socket(): %s(%d)", strerror(err), err);
-		return -err;
-	}
-
-	memset(&server, 0, sizeof(server));
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_address.s_addr;
-	server.sin_port = htons(tcp_port);
-
-	if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &enable,
-						sizeof(enable)) == -1) {
-		err = errno;
-		hal_log_error("tcp setsockopt(iTCP_NODELAY): %s(%d)",
-							strerror(err), err);
-		close(sock);
-		return -err;
-	}
-
-	err = connect(sock, (struct sockaddr *) &server, sizeof(server));
-	if (err < 0)
-		return -errno;
-
-	return sock;
-}
-
 
 static void io_destroy(void *user_data)
 {
@@ -435,7 +361,6 @@ static void evt_disconnected(struct mgmt_nrf24_header *mhdr)
 
 static int8_t evt_presence(struct mgmt_nrf24_header *mhdr, ssize_t rbytes)
 {
-	struct l_io *io;
 	int sock, nsk;
 	char mac_str[24];
 	const char *end;
@@ -508,22 +433,13 @@ static int8_t evt_presence(struct mgmt_nrf24_header *mhdr, ssize_t rbytes)
 		return nsk;
 	}
 
-	/* Upper layer socket: knotd */
-	if (inet_address.s_addr)
-		sock = tcp_connect();
-	else
-		sock = unix_connect();
-
+	/* Monitor traffic from knotd */
+	sock = knot_connect(nsk, io_read, io_destroy);
 	if (sock < 0) {
 		hal_log_error("connect(): %s(%d)", strerror(sock), sock);
 		hal_comm_close(nsk);
 		return sock;
 	}
-
-	/* Monitor traffic from knotd */
-	io = l_io_new(sock);
-	l_io_set_close_on_destroy(io, true);
-	l_io_set_read_handler(io, io_read, L_INT_TO_PTR(nsk), io_destroy);
 
 	/* Monitor traffic from radio */
 	pipe = l_new(struct idle_pipe, 1);
@@ -760,12 +676,9 @@ int adapter_start(const struct nrf24_mac *mac)
 
 	/*  TCP development mode: RPi(nrfd) connected to Linux(knotd) */
 	if (settings.host) {
-		memset(&inet_address, 0, sizeof(inet_address));
-		ret = tcp_init(settings.host);
+		ret = knot_tcp_init(settings.host, settings.port);
 		if (ret < 0)
 			return ret;
-
-		tcp_port = settings.port;
 	}
 
 	ret = radio_init(settings.channel, mac);
