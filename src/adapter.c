@@ -29,7 +29,6 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -72,8 +71,6 @@ struct idle_pipe {
 static struct nrf24_adapter adapter; /* Supports only one local adapter */
 static struct l_idle *mgmt_idle;
 static struct l_timeout *mgmt_timeout;
-static struct in_addr inet_address;
-static int tcp_port;
 static int mgmtfd;
 
 static bool pipe_match_addr(const void *a, const void *b)
@@ -140,57 +137,6 @@ static int unix_connect(void)
 
 	return sock;
 }
-
-static int tcp_init(const char *host)
-{
-	struct hostent *hostent;		/* Host information */
-	int err;
-
-	hostent = gethostbyname(host);
-	if (hostent == NULL) {
-		err = errno;
-		hal_log_error("gethostbyname(): %s(%d)", strerror(err), err);
-		return -err;
-	}
-
-	inet_address.s_addr = *((unsigned long *) hostent-> h_addr_list[0]);
-
-	return 0;
-}
-
-static int tcp_connect(void)
-{
-	struct sockaddr_in server;
-	int err, sock, enable = 1;
-
-	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sock < 0) {
-		err = errno;
-		hal_log_error("socket(): %s(%d)", strerror(err), err);
-		return -err;
-	}
-
-	memset(&server, 0, sizeof(server));
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_address.s_addr;
-	server.sin_port = htons(tcp_port);
-
-	if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &enable,
-						sizeof(enable)) == -1) {
-		err = errno;
-		hal_log_error("tcp setsockopt(iTCP_NODELAY): %s(%d)",
-							strerror(err), err);
-		close(sock);
-		return -err;
-	}
-
-	err = connect(sock, (struct sockaddr *) &server, sizeof(server));
-	if (err < 0)
-		return -errno;
-
-	return sock;
-}
-
 
 static void io_destroy(void *user_data)
 {
@@ -509,10 +455,7 @@ static int8_t evt_presence(struct mgmt_nrf24_header *mhdr, ssize_t rbytes)
 	}
 
 	/* Upper layer socket: knotd */
-	if (inet_address.s_addr)
-		sock = tcp_connect();
-	else
-		sock = unix_connect();
+	sock = unix_connect();
 
 	if (sock < 0) {
 		hal_log_error("connect(): %s(%d)", strerror(sock), sock);
@@ -757,16 +700,6 @@ int adapter_start(const struct nrf24_mac *mac)
 {
 	const char *path = "/nrf0";
 	int ret;
-
-	/*  TCP development mode: RPi(nrfd) connected to Linux(knotd) */
-	if (settings.host) {
-		memset(&inet_address, 0, sizeof(inet_address));
-		ret = tcp_init(settings.host);
-		if (ret < 0)
-			return ret;
-
-		tcp_port = settings.port;
-	}
 
 	ret = radio_init(settings.channel, mac);
 	if (ret < 0)
