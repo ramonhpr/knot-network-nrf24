@@ -23,9 +23,6 @@ struct settings {
 	const char *config_path;
 	const char *nodes_path;
 
-	const char *host;
-	unsigned int port;
-
 	const char *spi;
 	int channel;
 	int dbm;

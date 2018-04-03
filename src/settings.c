@@ -31,8 +31,6 @@
 
 static const char *config_path = "/etc/knot/nrf24-radio.conf";
 static const char *nodes_path = "/etc/knot/nrf24-keys.conf";
-static const char *host = NULL;
-static unsigned int port = 8081;
 static const char *spi = "/dev/spidev0.0";
 static int channel = -1;
 static int dbm = -255;
@@ -47,8 +45,6 @@ static void usage(void)
 	printf("Options:\n"
 		"\t-c, --config       Configuration file path\n"
 		"\t-f, --nodes        Known nodes file path\n"
-		"\t-h, --host         Host to forward KNoT\n"
-		"\t-p, --port         Remote port\n"
 		"\t-s, --spi          SPI device path\n"
 		"\t-C, --channel      Broadcast channel\n"
 		"\t-t, --tx           TX power: transmition signal strength in dBm\n"
@@ -59,8 +55,6 @@ static void usage(void)
 static const struct option main_options[] = {
 	{ "config",		required_argument,	NULL, 'c' },
 	{ "nodes",		required_argument,	NULL, 'f' },
-	{ "host",		required_argument,	NULL, 'h' },
-	{ "port",		required_argument,	NULL, 'p' },
 	{ "spi",		required_argument,	NULL, 's' },
 	{ "channel",		required_argument,	NULL, 'C' },
 	{ "tx",			required_argument,	NULL, 't' },
@@ -85,12 +79,6 @@ static int parse_args(int argc, char *argv[], struct settings *settings)
 			break;
 		case 'f':
 			settings->nodes_path = optarg;
-			break;
-		case 'h':
-			settings->host = optarg;
-			break;
-		case 'p':
-			settings->port = atoi(optarg);
 			break;
 		case 's':
 			settings->spi = optarg;
@@ -155,8 +143,6 @@ int settings_parse(int argc, char *argv[], struct settings *settings)
 {
 	settings->config_path = config_path;
 	settings->nodes_path = nodes_path;
-	settings->host = host;
-	settings->port = port;
 	settings->spi = spi;
 	settings->channel = channel;
 	settings->dbm = dbm;

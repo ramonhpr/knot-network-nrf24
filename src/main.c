@@ -83,9 +83,6 @@ int main(int argc, char *argv[])
 	hal_log_init("nrfd", settings.detach);
 	hal_log_info("KNOT HAL nrfd");
 
-	if (settings.host)
-		hal_log_error("Development mode: %s:%u",
-			      settings.host, settings.port);
 	if (!l_main_init())
 		return EXIT_FAILURE;
 
