@@ -100,6 +100,8 @@ static void emit_signal_paired(const char *path, bool paired)
 	l_dbus_message_builder_destroy(builder);
 
 	l_dbus_send(dbus_get_bus(), signal);
+	l_dbus_property_changed(dbus_get_bus(), path, DEVICE_INTERFACE,
+				"Paired");
 }
 
 static void emit_signal_name_changed(const char *path, const char *newname)
@@ -117,6 +119,8 @@ static void emit_signal_name_changed(const char *path, const char *newname)
 	l_dbus_message_builder_destroy(builder);
 
 	l_dbus_send(dbus_get_bus(), signal);
+	l_dbus_property_changed(dbus_get_bus(), path, DEVICE_INTERFACE,
+				"Name");
 }
 
 static struct l_dbus_message *method_pair(struct l_dbus *dbus,
@@ -416,6 +420,8 @@ void device_set_connected(struct nrf24_device *device, bool connected)
 	l_dbus_message_builder_destroy(builder);
 
 	l_dbus_send(dbus_get_bus(), signal);
+	l_dbus_property_changed(dbus_get_bus(), path, DEVICE_INTERFACE,
+				"Connected");
 
 	device->connected = connected;
 }
