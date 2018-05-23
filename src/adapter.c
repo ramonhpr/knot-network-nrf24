@@ -645,6 +645,21 @@ static void radio_stop(void)
 	hal_comm_deinit();
 }
 
+static const char *padding_id(const char* id) {
+	char zeros[17] = "0000000000000000";
+	int padding_len = 16 - strlen(id);
+	char new_id[17];
+	if (padding_len > 0) {
+		snprintf(new_id, 17, "%.*s%s", padding_len, zeros, id);
+		return l_strdup(new_id);
+	} else if (strlen(id) > 16) {
+		snprintf(new_id, 17, "%s", id);
+		return l_strdup(new_id);
+	} else {
+		return id;
+	}
+}
+
 static struct l_dbus_message *method_add_device(struct l_dbus *dbus,
 						struct l_dbus_message *msg,
 						void *user_data)
@@ -657,6 +672,7 @@ static struct l_dbus_message *method_add_device(struct l_dbus *dbus,
 	const char *mac_str = NULL;
 	const char *name = NULL;
 	const char *id = NULL;
+	const char *id_padded = NULL;
 	char *key;
 
 	if (!l_dbus_message_get_arguments(msg, "a{sv}", &dict))
@@ -679,7 +695,8 @@ static struct l_dbus_message *method_add_device(struct l_dbus *dbus,
 	if (nrf24_str2mac(mac_str, &addr) != 0)
 		return dbus_error_invalid_args(msg);
 
-	device = device_create(adapter->path, &addr, id, name, true,
+	id_padded = padding_id(id);
+	device = device_create(adapter->path, &addr, id_padded, name, true,
 			       forget_cb, adapter);
 	if (!device)
 		return dbus_error_invalid_args(msg);
